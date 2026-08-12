@@ -4,7 +4,7 @@ import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
 // httpOnly session cookie on every request to the GraphQL API,
 // even though frontend (5173) and backend (4000) are different origins.
 const httpLink = new HttpLink({
-  uri: "https://api-parts-marketplace.vercel.app/graphql",
+  uri: "https://parts-marketplace-ygjc.onrender.com/graphql",
   credentials: "include",
 });
 

@@ -10,8 +10,9 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // const [formError, setFormError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [showColdStartHint, setShowColdStartHint] = useState(false);
+  // const [formError, setFormError] = useState<string | null>(null);
   // const location = useLocation();
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
@@ -32,6 +33,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     e.preventDefault();
     if (!isValid) return;
     setSubmitting(true);
+    const hintTimer = setTimeout(() => setShowColdStartHint(true), 3000);
     // setFormError(null);
     try {
       if (mode === "login") {
@@ -45,6 +47,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
     } finally {
       setSubmitting(false);
+      clearTimeout(hintTimer);
+      setShowColdStartHint(false);
     }
   }
 
@@ -89,6 +93,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           <button type="submit" disabled={!isValid || submitting}>
             {submitting ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
           </button>
+          {showColdStartHint && (
+            <p className="hint" style={{ textAlign: "center", marginTop: "0.75rem" }}>
+              First request may take up to a minute — the server is waking up.
+            </p>
+          )}
         </form>
 
         <p className="switch-link">
