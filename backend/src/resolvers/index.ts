@@ -1,42 +1,42 @@
 import bcrypt from "bcryptjs";
-import { users, parts, nextUserId, nextPartId, User, Part } from "../store/store";
+import { prisma } from "../prisma";
 import { issueSession, clearSession, requireAuth, AuthContext } from "../middleware/auth";
 
 export const resolvers = {
   Query: {
-    me: (_: unknown, __: unknown, ctx: AuthContext): User | null => {
+    me: (_: unknown, __: unknown, ctx: AuthContext) => {
       if (!ctx.userId) return null;
-      return users.find((u) => u.id === ctx.userId) ?? null;
+      return prisma.user.findUnique({ where: { id: ctx.userId } });
     },
 
-    parts: (): Part[] => parts,
+    parts: () => prisma.part.findMany(),
 
-    part: (_: unknown, { id }: { id: string }): Part | undefined =>
-      parts.find((p) => p.id === id),
+    part: (_: unknown, { id }: { id: string }) =>
+      prisma.part.findUnique({ where: { id } }),
   },
 
   Mutation: {
-    register: (
+    register: async (
       _: unknown,
       { email, password }: { email: string; password: string },
       ctx: AuthContext
     ) => {
-      if (users.some((u) => u.email === email)) {
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) {
         throw new Error("EMAIL_TAKEN: an account with this email already exists");
       }
       const passwordHash = bcrypt.hashSync(password, 10);
-      const user: User = { id: nextUserId(), email, passwordHash };
-      users.push(user);
+      const user = await prisma.user.create({ data: { email, passwordHash } });
       issueSession(ctx.res, user.id);
       return { user };
     },
 
-    login: (
+    login: async (
       _: unknown,
       { email, password }: { email: string; password: string },
       ctx: AuthContext
     ) => {
-      const user = users.find((u) => u.email === email);
+      const user = await prisma.user.findUnique({ where: { email } });
       if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
         throw new Error("INVALID_CREDENTIALS");
       }
@@ -49,43 +49,46 @@ export const resolvers = {
       return true;
     },
 
-    createPart: (
+    createPart: async (
       _: unknown,
       args: { name: string; sku: string; price: number; quantity: number },
       ctx: AuthContext
-    ): Part => {
+    ) => {
       requireAuth(ctx.userId);
-      if (parts.some((p) => p.sku === args.sku)) {
+      const existing = await prisma.part.findUnique({ where: { sku: args.sku } });
+      if (existing) {
         throw new Error("SKU_TAKEN: a part with this SKU already exists");
       }
-      const part: Part = { id: nextPartId(), ownerId: ctx.userId, ...args };
-      parts.push(part);
-      return part;
+      return prisma.part.create({ data: { ...args, ownerId: ctx.userId } });
     },
 
-    updatePart: (
+    updatePart: async (
       _: unknown,
       args: { id: string; name?: string; price?: number; quantity?: number },
       ctx: AuthContext
-    ): Part => {
+    ) => {
       requireAuth(ctx.userId);
-      const part = parts.find((p) => p.id === args.id);
+      const part = await prisma.part.findUnique({ where: { id: args.id } });
       if (!part) throw new Error("NOT_FOUND: part does not exist");
       if (part.ownerId !== ctx.userId) throw new Error("FORBIDDEN: not your part");
 
-      if (args.name !== undefined) part.name = args.name;
-      if (args.price !== undefined) part.price = args.price;
-      if (args.quantity !== undefined) part.quantity = args.quantity;
-      return part;
+      return prisma.part.update({
+        where: { id: args.id },
+        data: {
+          name: args.name ?? undefined,
+          price: args.price ?? undefined,
+          quantity: args.quantity ?? undefined,
+        },
+      });
     },
 
-    deletePart: (_: unknown, { id }: { id: string }, ctx: AuthContext): boolean => {
+    deletePart: async (_: unknown, { id }: { id: string }, ctx: AuthContext) => {
       requireAuth(ctx.userId);
-      const idx = parts.findIndex((p) => p.id === id);
-      if (idx === -1) throw new Error("NOT_FOUND: part does not exist");
-      if (parts[idx].ownerId !== ctx.userId) throw new Error("FORBIDDEN: not your part");
+      const part = await prisma.part.findUnique({ where: { id } });
+      if (!part) throw new Error("NOT_FOUND: part does not exist");
+      if (part.ownerId !== ctx.userId) throw new Error("FORBIDDEN: not your part");
 
-      parts.splice(idx, 1);
+      await prisma.part.delete({ where: { id } });
       return true;
     },
   },
