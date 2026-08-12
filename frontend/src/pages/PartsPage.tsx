@@ -36,6 +36,7 @@ export function PartsPage() {
     try {
       await updatePart({ variables: { id: part.id, quantity: nextQty } });
       await refetch();
+      setToast({ message: `${part.name} quantity ${delta > 0 ? "increased" : "decreased"} to ${nextQty}`, variant: "success" });
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
     }
@@ -46,8 +47,9 @@ export function PartsPage() {
     // setActionError(null);
     try {
       await deletePart({ variables: { id: pendingDelete.id } });
-      setPendingDelete(null);
       await refetch();
+      setToast({ message: `Deleted ${pendingDelete.name} (${pendingDelete.sku})`, variant: "success" });
+      setPendingDelete(null);
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
       setPendingDelete(null);

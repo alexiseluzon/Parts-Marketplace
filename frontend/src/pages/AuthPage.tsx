@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
+
+  useEffect(() => {
+    setEmail("");
+    setPassword("");
+  }, [mode]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
