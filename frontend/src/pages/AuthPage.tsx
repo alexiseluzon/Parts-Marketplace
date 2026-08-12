@@ -11,7 +11,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const isValid = email.trim().length > 0 && password.length >= 6;
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -48,6 +48,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
             onChange={(e) => setEmail(e.target.value)}
             required
           />
+          <span className="hint">Enter a valid email address</span>
 
           <label htmlFor="password">Password</label>
           <input
