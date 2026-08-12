@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Toast } from "../components/Toast";
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { login, register } = useAuth();
@@ -10,6 +11,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
 
@@ -24,7 +26,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       } else {
         await register(email, password);
       }
-      navigate("/parts");
+      setToastMsg(mode === "login" ? "Logged in successfully" : "Account created successfully");
+      setTimeout(() => navigate("/parts"), 700);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -85,6 +88,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           )}
         </p>
       </div>
+      {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
     </div>
   );
 }
