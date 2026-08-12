@@ -15,7 +15,8 @@ async function main() {
   // httpOnly cookie on cross-origin requests (frontend on a different port).
   app.use(
     cors({
-      origin: "https://partsmarketplace.vercel.app",
+      // origin: "http://localhost:5173", //Localhost for testing
+      origin: "https://partsmarketplace.vercel.app", //Production frontend deployed on Vercel
       credentials: true,
     })
   );
