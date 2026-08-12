@@ -5,6 +5,7 @@ import type { Part } from "../lib/graphql";
 import { useAuth } from "../context/AuthContext";
 import { PartForm } from "../components/PartForm";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { Toast } from "../components/Toast";
 
 export function PartsPage() {
   const { user, logout } = useAuth();
@@ -15,12 +16,14 @@ export function PartsPage() {
 
   const [pendingDelete, setPendingDelete] = useState<Part | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   async function handleCreate(input: { name: string; sku: string; price: number; quantity: number }) {
     setActionError(null);
     try {
       await createPart({ variables: input });
       await refetch();
+      setToastMsg(`Added ${input.name} (${input.sku})`);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to add part");
     }
@@ -160,6 +163,7 @@ export function PartsPage() {
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
       />
+      {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
     </div>
   );
 }
