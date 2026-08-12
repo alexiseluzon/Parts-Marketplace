@@ -223,7 +223,7 @@ input:focus {
 
 .part-form {
   display: grid;
-  grid-template-columns: repeat(4, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.9rem;
   align-items: end;
 }
