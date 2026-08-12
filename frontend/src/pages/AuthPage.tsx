@@ -12,6 +12,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [submitting, setSubmitting] = useState(false);
   // const [formError, setFormError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  // const location = useLocation();
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
 
@@ -19,6 +20,13 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     setEmail("");
     setPassword("");
   }, [mode]);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("justLoggedOut")) {
+      sessionStorage.removeItem("justLoggedOut");
+      setToast({ message: "Logged out successfully", variant: "success" });
+    }
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

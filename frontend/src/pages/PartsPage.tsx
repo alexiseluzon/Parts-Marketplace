@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { PartForm } from "../components/PartForm";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Toast } from "../components/Toast";
+// import { useNavigate } from "react-router-dom";
 
 export function PartsPage() {
   const { user, logout } = useAuth();
@@ -17,6 +18,8 @@ export function PartsPage() {
   const [pendingDelete, setPendingDelete] = useState<Part | null>(null);
   // const [actionError, setActionError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+
+  // const navigate = useNavigate();
 
   async function handleCreate(input: { name: string; sku: string; price: number; quantity: number }) {
     // setActionError(null);
@@ -42,6 +45,16 @@ export function PartsPage() {
     }
   }
 
+  async function handleLogout() {
+    try {
+      await logout();
+      sessionStorage.setItem("justLoggedOut", "1");
+      // navigate("/login", { state: { loggedOut: true } });
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to log out", variant: "error" });
+    }
+  }
+
   async function confirmDelete() {
     if (!pendingDelete) return;
     // setActionError(null);
@@ -62,7 +75,7 @@ export function PartsPage() {
         <p className="eyebrow">Parts Marketplace</p>
         <div className="topbar-right">
           <span className="user-email">{user?.email}</span>
-          <button type="button" className="btn-ghost" onClick={logout} title="Sign out of your account">
+          <button type="button" className="btn-ghost" onClick={handleLogout} title="Sign out of your account">
             Sign out
           </button>
         </div>
