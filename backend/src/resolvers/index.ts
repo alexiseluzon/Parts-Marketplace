@@ -55,6 +55,9 @@ export const resolvers = {
       ctx: AuthContext
     ): Part => {
       requireAuth(ctx.userId);
+      if (parts.some((p) => p.sku === args.sku)) {
+        throw new Error("SKU_TAKEN: a part with this SKU already exists");
+      }
       const part: Part = { id: nextPartId(), ownerId: ctx.userId, ...args };
       parts.push(part);
       return part;
