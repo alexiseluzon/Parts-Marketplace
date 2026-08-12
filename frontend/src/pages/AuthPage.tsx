@@ -10,8 +10,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  // const [formError, setFormError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && password.length >= 6;
 
@@ -19,17 +19,17 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     e.preventDefault();
     if (!isValid) return;
     setSubmitting(true);
-    setFormError(null);
+    // setFormError(null);
     try {
       if (mode === "login") {
         await login(email, password);
       } else {
         await register(email, password);
       }
-      setToastMsg(mode === "login" ? "Logged in successfully" : "Account created successfully");
+      setToast({ message: mode === "login" ? "Logged in successfully" : "Account created successfully", variant: "success" });
       setTimeout(() => navigate("/parts"), 700);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Something went wrong");
+      setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -65,12 +65,14 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           />
           <span className="hint">Minimum 6 characters</span>
 
-          {formError && (
+          {/* {formError && (
             <p className="form-error" role="alert">
               {formError}
             </p>
-          )}
+          )} */}
 
+          {toast && <Toast message={toast.message} variant={toast.variant} onDone={() => setToast(null)} />}
+  
           <button type="submit" disabled={!isValid || submitting}>
             {submitting ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
           </button>
@@ -88,7 +90,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           )}
         </p>
       </div>
-      {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
+      {toast && <Toast message={toast.message} variant={toast.variant} onDone={() => setToast(null)} />}
     </div>
   );
 }

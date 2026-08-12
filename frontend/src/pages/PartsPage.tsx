@@ -15,41 +15,41 @@ export function PartsPage() {
   const [deletePart] = useMutation(DELETE_PART);
 
   const [pendingDelete, setPendingDelete] = useState<Part | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  // const [actionError, setActionError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
 
   async function handleCreate(input: { name: string; sku: string; price: number; quantity: number }) {
-    setActionError(null);
+    // setActionError(null);
     try {
       await createPart({ variables: input });
       await refetch();
-      setToastMsg(`Added ${input.name} (${input.sku})`);
+      setToast({ message: `Added ${input.name} (${input.sku})`, variant: "success" });
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to add part");
+      setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
     }
   }
 
   async function handleAdjustQuantity(part: Part, delta: number) {
     const nextQty = part.quantity + delta;
     if (nextQty < 0) return;
-    setActionError(null);
+    // setActionError(null);
     try {
       await updatePart({ variables: { id: part.id, quantity: nextQty } });
       await refetch();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to update part");
+      setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
     }
   }
 
   async function confirmDelete() {
     if (!pendingDelete) return;
-    setActionError(null);
+    // setActionError(null);
     try {
       await deletePart({ variables: { id: pendingDelete.id } });
       setPendingDelete(null);
       await refetch();
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to delete part");
+      setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
       setPendingDelete(null);
     }
   }
@@ -75,11 +75,11 @@ export function PartsPage() {
         <section className="inventory-section">
           <h2>Inventory</h2>
 
-          {actionError && (
+          {/* {actionError && (
             <p className="form-error" role="alert">
               {actionError}
             </p>
-          )}
+          )} */}
 
           {loading && <p className="status-text">Loading inventory…</p>}
           {error && (
@@ -163,7 +163,7 @@ export function PartsPage() {
         onConfirm={confirmDelete}
         onCancel={() => setPendingDelete(null)}
       />
-      {toastMsg && <Toast message={toastMsg} onDone={() => setToastMsg(null)} />}
+      {toast && <Toast message={toast.message} variant={toast.variant} onDone={() => setToast(null)} />}
     </div>
   );
 }
