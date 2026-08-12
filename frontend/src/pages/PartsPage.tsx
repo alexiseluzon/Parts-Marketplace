@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client";
-import { PARTS, CREATE_PART, UPDATE_PART, DELETE_PART } from "../lib/graphql";
+import { PARTS, CREATE_PART, UPDATE_PART } from "../lib/graphql";
 import type { Part } from "../lib/graphql";
 import { useAuth } from "../context/AuthContext";
 import { PartForm } from "../components/PartForm";
@@ -13,11 +13,12 @@ export function PartsPage() {
   const { data, loading, error, refetch } = useQuery(PARTS);
   const [createPart, { loading: creating }] = useMutation(CREATE_PART);
   const [updatePart] = useMutation(UPDATE_PART);
-  const [deletePart] = useMutation(DELETE_PART);
+  // const [deletePart] = useMutation(DELETE_PART);
 
-  const [pendingDelete, setPendingDelete] = useState<Part | null>(null);
+  // const [pendingDelete, setPendingDelete] = useState<Part | null>(null);
   // const [actionError, setActionError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; variant: "success" | "error" } | null>(null);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   // const navigate = useNavigate();
 
@@ -51,23 +52,24 @@ export function PartsPage() {
       sessionStorage.setItem("justLoggedOut", "1");
       // navigate("/login", { state: { loggedOut: true } });
     } catch (err) {
+      setConfirmingLogout(false);
       setToast({ message: err instanceof Error ? err.message : "Failed to log out", variant: "error" });
     }
   }
 
-  async function confirmDelete() {
-    if (!pendingDelete) return;
-    // setActionError(null);
-    try {
-      await deletePart({ variables: { id: pendingDelete.id } });
-      await refetch();
-      setToast({ message: `Deleted ${pendingDelete.name} (${pendingDelete.sku})`, variant: "success" });
-      setPendingDelete(null);
-    } catch (err) {
-      setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
-      setPendingDelete(null);
-    }
-  }
+  // async function confirmDelete() {
+  //   if (!pendingDelete) return;
+  //   // setActionError(null);
+  //   try {
+  //     await deletePart({ variables: { id: pendingDelete.id } });
+  //     await refetch();
+  //     setToast({ message: `Deleted ${pendingDelete.name} (${pendingDelete.sku})`, variant: "success" });
+  //     setPendingDelete(null);
+  //   } catch (err) {
+  //     setToast({ message: err instanceof Error ? err.message : "Something went wrong", variant: "error" });
+  //     setPendingDelete(null);
+  //   }
+  // }
 
   return (
     <div className="parts-page">
@@ -75,7 +77,7 @@ export function PartsPage() {
         <p className="eyebrow">Parts Marketplace</p>
         <div className="topbar-right">
           <span className="user-email">{user?.email}</span>
-          <button type="button" className="btn-ghost" onClick={handleLogout} title="Sign out of your account">
+          <button type="button" className="btn-ghost" onClick={() => setConfirmingLogout(true)} title="Sign out of your account">
             Sign out
           </button>
         </div>
@@ -156,7 +158,7 @@ export function PartsPage() {
                           type="button"
                           className="btn-danger-ghost"
                           disabled={!isOwner}
-                          onClick={() => setPendingDelete(part)}
+                          onClick={() => setConfirmingLogout(true)}
                           title={isOwner ? "Delete this part" : "Only the owner can delete this part"}
                         >
                           Delete
@@ -172,11 +174,12 @@ export function PartsPage() {
       </main>
 
       <ConfirmDialog
-        open={pendingDelete !== null}
-        title="Delete part?"
-        message={`This will permanently remove "${pendingDelete?.name}" (${pendingDelete?.sku}) from inventory.`}
-        onConfirm={confirmDelete}
-        onCancel={() => setPendingDelete(null)}
+        open={confirmingLogout}
+        title="Sign out?"
+        message="You'll need to log in again to manage inventory."
+        confirmLabel="Sign out"
+        onConfirm={handleLogout}
+        onCancel={() => setConfirmingLogout(false)}
       />
       {toast && <Toast message={toast.message} variant={toast.variant} onDone={() => setToast(null)} />}
     </div>

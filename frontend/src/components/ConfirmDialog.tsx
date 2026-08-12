@@ -2,11 +2,12 @@ interface ConfirmDialogProps {
   open: boolean;
   title: string;
   message: string;
+  confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-export function ConfirmDialog({ open, title, message, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, message, confirmLabel = "Delete",onConfirm, onCancel }: ConfirmDialogProps) {
   if (!open) return null;
 
   return (
@@ -25,7 +26,7 @@ export function ConfirmDialog({ open, title, message, onConfirm, onCancel }: Con
             Cancel
           </button>
           <button type="button" className="btn-danger" onClick={onConfirm} autoFocus>
-            Delete
+            {confirmLabel}
           </button>
         </div>
       </div>
