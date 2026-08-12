@@ -17,7 +17,7 @@ export function issueSession(res: Response, userId: string) {
   const token = jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "none",
     secure: process.env.NODE_ENV === "production",
     maxAge: 2 * 60 * 60 * 1000,
   });
