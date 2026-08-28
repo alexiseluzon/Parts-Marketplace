@@ -19,6 +19,9 @@ export const PARTS = gql`
       price
       quantity
       ownerId
+      owner {
+        email
+      }
     }
   }
 `;
@@ -67,4 +70,5 @@ export interface Part {
   price: number;
   quantity: number;
   ownerId: string;
+  owner: { email: string };
 }

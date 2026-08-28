@@ -6,6 +6,12 @@ import { requireAuth, AuthContext } from "../middleware/auth";
 // middleware/auth.ts) and reads/writes app data.
 
 export const resolvers = {
+  Part: {
+    // Resolved lazily — only runs if a query actually selects `owner`.
+    owner: (part: { ownerId: string }) =>
+      prisma.profile.findUnique({ where: { id: part.ownerId } }),
+  },
+
   Query: {
     me: (_: unknown, __: unknown, ctx: AuthContext) => {
       if (!ctx.userId) return null;

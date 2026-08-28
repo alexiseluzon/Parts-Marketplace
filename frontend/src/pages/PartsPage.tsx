@@ -156,7 +156,7 @@ export function PartsPage() {
                         </div>
                       </td>
                       {user?.role === "admin" && (
-                        <td className="owner-cell">{isOwner ? "You" : part.ownerId.slice(0, 8)}</td>
+                        <td className="owner-cell">{isOwner ? "You" : part.owner.email}</td>
                       )}
                       <td>
                         <button

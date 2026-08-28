@@ -14,6 +14,7 @@ export const typeDefs = gql`
     price: Float!
     quantity: Int!
     ownerId: ID!
+    owner: User!
   }
 
   type Query {
