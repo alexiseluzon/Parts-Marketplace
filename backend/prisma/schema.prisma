@@ -8,19 +8,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id           String @id @default(cuid())
-  email        String @unique
-  passwordHash String
-  parts        Part[]
+// Mirrors auth.users (managed by Supabase Auth). One row per user,
+// created via a DB trigger on auth.users insert (see migration.sql).
+model Profile {
+  id    String @id @db.Uuid
+  email String @unique
+  role  String @default("user") // "user" | "admin"
+  parts Part[]
+
+  @@map("profiles")
 }
 
 model Part {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   name     String
-  sku      String @unique
+  sku      String  @unique
   price    Float
   quantity Int
-  ownerId  String
-  owner    User   @relation(fields: [ownerId], references: [id])
+  ownerId  String  @db.Uuid
+  owner    Profile @relation(fields: [ownerId], references: [id])
+
+  @@map("parts")
 }

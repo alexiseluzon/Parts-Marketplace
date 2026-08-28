@@ -1,9 +1,8 @@
 import express from "express";
-import cookieParser from "cookie-parser";
 import cors from "cors";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@as-integrations/express4";
-import { Request, Response } from "express";
+import { Request } from "express";
 import { typeDefs } from "./schema";
 import { resolvers } from "./resolvers";
 import { getUserIdFromRequest, AuthContext } from "./middleware/auth";
@@ -11,16 +10,18 @@ import { getUserIdFromRequest, AuthContext } from "./middleware/auth";
 async function main() {
   const app = express();
 
-  // credentials: true is required so the browser will send/receive the
-  // httpOnly cookie on cross-origin requests (frontend on a different port).
+  const allowedOrigins = [
+    "http://localhost:5173",  //Localhost for testing
+    "https://partsmarketplace.vercel.app", //Production frontend deployed on Vercel
+  ];
+
+  // Auth now travels as a Bearer token (Supabase access_token), not a
+  // cookie, so credentials/cookie-parser are no longer needed.
   app.use(
     cors({
-      // origin: "http://localhost:5173", //Localhost for testing
-      origin: "https://partsmarketplace.vercel.app", //Production frontend deployed on Vercel
-      credentials: true,
+      origin: allowedOrigins,
     })
   );
-  app.use(cookieParser());
   app.use(express.json());
 
   const server = new ApolloServer({
@@ -33,11 +34,10 @@ async function main() {
   app.use(
     "/graphql",
     expressMiddleware(server, {
-      // Every request builds a fresh context: read the cookie, resolve the
-      // user, and hand the response object down so resolvers can set cookies.
-      context: async ({ req, res }: { req: Request; res: Response }): Promise<AuthContext> => ({
-        userId: getUserIdFromRequest(req),
-        res,
+      // Every request builds a fresh context: verify the Bearer token
+      // (Supabase access_token) and resolve it to a user id.
+      context: async ({ req }: { req: Request }): Promise<AuthContext> => ({
+        userId: await getUserIdFromRequest(req),
       }),
     })
   );

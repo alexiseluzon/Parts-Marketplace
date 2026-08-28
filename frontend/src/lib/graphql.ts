@@ -5,35 +5,8 @@ export const ME = gql`
     me {
       id
       email
+      role
     }
-  }
-`;
-
-export const REGISTER = gql`
-  mutation Register($email: String!, $password: String!) {
-    register(email: $email, password: $password) {
-      user {
-        id
-        email
-      }
-    }
-  }
-`;
-
-export const LOGIN = gql`
-  mutation Login($email: String!, $password: String!) {
-    login(email: $email, password: $password) {
-      user {
-        id
-        email
-      }
-    }
-  }
-`;
-
-export const LOGOUT = gql`
-  mutation Logout {
-    logout
   }
 `;
 
@@ -84,6 +57,7 @@ export const DELETE_PART = gql`
 export interface User {
   id: string;
   email: string;
+  role: "user" | "admin";
 }
 
 export interface Part {

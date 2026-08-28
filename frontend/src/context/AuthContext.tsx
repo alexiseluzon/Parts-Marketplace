@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useApolloClient, useMutation } from "@apollo/client";
-import { ME, LOGIN, REGISTER, LOGOUT } from "../lib/graphql";
+import { useApolloClient, useLazyQuery } from "@apollo/client";
+import { supabase } from "../lib/supabaseClient";
+import { ME } from "../lib/graphql";
 import type { User } from "../lib/graphql";
 
 interface AuthState {
@@ -16,52 +17,66 @@ interface AuthState {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const client = useApolloClient();
+  const apolloClient = useApolloClient();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [loginMutation] = useMutation(LOGIN);
-  const [registerMutation] = useMutation(REGISTER);
-  const [logoutMutation] = useMutation(LOGOUT);
+  // "me" is fetched from our own backend (not Supabase directly) because
+  // it returns app-level fields like role, sourced from the profiles table.
+  const [fetchMe] = useLazyQuery<{ me: User | null }>(ME, {
+    fetchPolicy: "network-only",
+  });
 
-  // On first load, ask the backend "who am I?" — the httpOnly cookie
-  // (if present from a previous session) answers this without us
-  // ever touching the token directly.
+  // Supabase's onAuthStateChange fires immediately with the current session
+  // on mount, then again on every sign-in/sign-out/token-refresh — so this
+  // single subscription replaces the old "ask backend who am I" bootstrap.
   useEffect(() => {
-    client
-      .query<{ me: User | null }>({ query: ME, fetchPolicy: "network-only" })
-      .then(({ data }) => setUser(data.me))
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, [client]);
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data } = await fetchMe();
+        setUser(data?.me ?? null);
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, [fetchMe]);
 
   async function login(email: string, password: string) {
     setError(null);
-    try {
-      const { data } = await loginMutation({ variables: { email, password } });
-      setUser(data.login.user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+    if (err) {
+      setError(err.message);
       throw err;
     }
+    // onAuthStateChange picks up the new session and sets `user`.
   }
 
   async function register(email: string, password: string) {
     setError(null);
-    try {
-      const { data } = await registerMutation({ variables: { email, password } });
-      setUser(data.register.user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+    const { error: err } = await supabase.auth.signUp({ email, password });
+    if (err) {
+      setError(err.message);
       throw err;
     }
+    // If email confirmation is enabled in Supabase Auth settings, there's
+    // no session yet at this point — onAuthStateChange fires once they
+    // confirm and sign in.
   }
 
   async function logout() {
-    await logoutMutation();
+    await supabase.auth.signOut();
     setUser(null);
-    await client.clearStore(); // wipe cached parts tied to this session
+    await apolloClient.clearStore(); // wipe cached parts tied to this session
   }
 
   return (

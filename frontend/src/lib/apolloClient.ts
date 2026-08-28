@@ -1,15 +1,27 @@
-import { ApolloClient, InMemoryCache, HttpLink } from "@apollo/client";
+import { ApolloClient, InMemoryCache, HttpLink, from } from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
+import { supabase } from "./supabaseClient";
 
-// credentials: "include" is required so the browser attaches the
-// httpOnly session cookie on every request to the GraphQL API,
-// even though frontend (5173) and backend (4000) are different origins.
 const httpLink = new HttpLink({
   // uri: "http://localhost:4000/graphql", //Localhost for testing
   uri: "https://parts-marketplace-ygjc.onrender.com/graphql", //Production backend deployed on Render
-  credentials: "include",
+});
+
+// Auth now travels as a Bearer token, not a cookie, so every request reads
+// the current Supabase session and attaches its access_token. getSession()
+// is a fast local read (no network call) unless the token needs refreshing.
+const authLink = setContext(async (_, { headers }) => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return {
+    headers: {
+      ...headers,
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
+  };
 });
 
 export const client = new ApolloClient({
-  link: httpLink,
+  link: from([authLink, httpLink]),
   cache: new InMemoryCache(),
 });

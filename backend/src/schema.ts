@@ -4,6 +4,7 @@ export const typeDefs = gql`
   type User {
     id: ID!
     email: String!
+    role: String!
   }
 
   type Part {
@@ -15,10 +16,6 @@ export const typeDefs = gql`
     ownerId: ID!
   }
 
-  type AuthPayload {
-    user: User!
-  }
-
   type Query {
     me: User
     parts: [Part!]!
@@ -26,10 +23,6 @@ export const typeDefs = gql`
   }
 
   type Mutation {
-    register(email: String!, password: String!): AuthPayload!
-    login(email: String!, password: String!): AuthPayload!
-    logout: Boolean!
-
     createPart(name: String!, sku: String!, price: Float!, quantity: Int!): Part!
     updatePart(id: ID!, name: String, price: Float, quantity: Int): Part!
     deletePart(id: ID!): Boolean!

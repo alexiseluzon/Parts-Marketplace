@@ -1,42 +1,31 @@
-import jwt from "jsonwebtoken";
-import { Request, Response } from "express";
+import { Request } from "express";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
-const COOKIE_NAME = "session_token";
-const TOKEN_TTL = "2h";
+// Supabase issues short-lived JWTs (RS256) via GoTrue. The frontend sends
+// the access_token as a Bearer header; we verify it against Supabase's
+// published JWKS rather than sharing a symmetric secret.
+const JWKS = createRemoteJWKSet(new URL(process.env.SUPABASE_JWKS_URL!));
 
 export interface AuthContext {
   userId: string | null;
-  res: Response;
 }
 
-// Sign a JWT and set it as an httpOnly cookie.
-// httpOnly => JS on the client can't read it (mitigates XSS token theft).
-// sameSite=strict => cookie won't be sent on cross-site requests (mitigates CSRF).
-export function issueSession(res: Response, userId: string) {
-  const token = jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "none",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 2 * 60 * 60 * 1000,
-  });
-}
+// Verifies the Supabase access token from the Authorization header and
+// returns the user's id (== auth.users.id == profiles.id). Returns null
+// for missing/expired/invalid tokens rather than throwing, so callers can
+// decide per-resolver whether auth is required.
+export async function getUserIdFromRequest(req: Request): Promise<string | null> {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) return null;
 
-export function clearSession(res: Response) {
-  res.clearCookie(COOKIE_NAME);
-}
-
-// Reads the cookie off the incoming request and resolves the userId.
-// This becomes the GraphQL context on every request.
-export function getUserIdFromRequest(req: Request): string | null {
-  const token = req.cookies?.[COOKIE_NAME];
-  if (!token) return null;
+  const token = header.slice("Bearer ".length);
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
-    return payload.sub;
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: `${process.env.SUPABASE_URL}/auth/v1`,
+    });
+    return typeof payload.sub === "string" ? payload.sub : null;
   } catch {
-    return null; // expired/invalid token => treat as logged out
+    return null; // expired/invalid/malformed => treat as logged out
   }
 }
 

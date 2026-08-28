@@ -75,6 +75,7 @@ export function PartsPage() {
       <header className="topbar">
         <p className="eyebrow">Parts Marketplace</p>
         <div className="topbar-right">
+          {user?.role === "admin" && <span className="admin-badge" title="You can see and manage every user's parts">Admin view</span>}
           <span className="user-email">{user?.email}</span>
           <button type="button" className="btn-ghost" onClick={() => setConfirmingLogout(true)} title="Sign out of your account">
             Sign out
@@ -116,12 +117,14 @@ export function PartsPage() {
                   <th>Name</th>
                   <th>Price</th>
                   <th>Qty</th>
+                  {user?.role === "admin" && <th>Owner</th>}
                   <th aria-label="Actions"></th>
                 </tr>
               </thead>
               <tbody>
                 {data.parts.map((part: Part) => {
                   const isOwner = part.ownerId === user?.id;
+                  const canManage = isOwner || user?.role === "admin";
                   return (
                     <tr key={part.id}>
                       <td className="sku-cell">{part.sku}</td>
@@ -132,9 +135,9 @@ export function PartsPage() {
                           <button
                             type="button"
                             className="btn-icon"
-                            disabled={!isOwner || part.quantity === 0}
+                            disabled={!canManage || part.quantity === 0}
                             onClick={() => handleAdjustQuantity(part, -1)}
-                            title={isOwner ? "Decrease quantity" : "Only the owner can edit this part"}
+                            title={canManage ? "Decrease quantity" : "Only the owner can edit this part"}
                             aria-label="Decrease quantity"
                           >
                             −
@@ -143,22 +146,25 @@ export function PartsPage() {
                           <button
                             type="button"
                             className="btn-icon"
-                            disabled={!isOwner}
+                            disabled={!canManage}
                             onClick={() => handleAdjustQuantity(part, 1)}
-                            title={isOwner ? "Increase quantity" : "Only the owner can edit this part"}
+                            title={canManage ? "Increase quantity" : "Only the owner can edit this part"}
                             aria-label="Increase quantity"
                           >
                             +
                           </button>
                         </div>
                       </td>
+                      {user?.role === "admin" && (
+                        <td className="owner-cell">{isOwner ? "You" : part.ownerId.slice(0, 8)}</td>
+                      )}
                       <td>
                         <button
                           type="button"
                           className="btn-danger-ghost"
-                          disabled={!isOwner}
+                          disabled={!canManage}
                           onClick={() => setPendingDelete(part)}
-                          title={isOwner ? "Delete this part" : "Only the owner can delete this part"}
+                          title={canManage ? "Delete this part" : "Only the owner can delete this part"}
                         >
                           Delete
                         </button>

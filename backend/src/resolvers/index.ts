@@ -1,54 +1,32 @@
-import bcrypt from "bcryptjs";
 import { prisma } from "../prisma";
-import { issueSession, clearSession, requireAuth, AuthContext } from "../middleware/auth";
+import { requireAuth, AuthContext } from "../middleware/auth";
+
+// Auth (signup/login/logout) is handled entirely by Supabase Auth on the
+// frontend now. This server only trusts the verified access token (see
+// middleware/auth.ts) and reads/writes app data.
 
 export const resolvers = {
   Query: {
     me: (_: unknown, __: unknown, ctx: AuthContext) => {
       if (!ctx.userId) return null;
-      return prisma.user.findUnique({ where: { id: ctx.userId } });
+      return prisma.profile.findUnique({ where: { id: ctx.userId } });
     },
 
-    parts: () => prisma.part.findMany(),
+    // Non-admins only see their own parts; admins see everything.
+    // This mirrors the RLS policy, so behavior is consistent even if
+    // this query is ever run through a different connection path.
+    parts: async (_: unknown, __: unknown, ctx: AuthContext) => {
+      requireAuth(ctx.userId);
+      const me = await prisma.profile.findUnique({ where: { id: ctx.userId } });
+      if (me?.role === "admin") return prisma.part.findMany();
+      return prisma.part.findMany({ where: { ownerId: ctx.userId } });
+    },
 
     part: (_: unknown, { id }: { id: string }) =>
       prisma.part.findUnique({ where: { id } }),
   },
 
   Mutation: {
-    register: async (
-      _: unknown,
-      { email, password }: { email: string; password: string },
-      ctx: AuthContext
-    ) => {
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        throw new Error("EMAIL_TAKEN: an account with this email already exists");
-      }
-      const passwordHash = bcrypt.hashSync(password, 10);
-      const user = await prisma.user.create({ data: { email, passwordHash } });
-      issueSession(ctx.res, user.id);
-      return { user };
-    },
-
-    login: async (
-      _: unknown,
-      { email, password }: { email: string; password: string },
-      ctx: AuthContext
-    ) => {
-      const user = await prisma.user.findUnique({ where: { email } });
-      if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
-        throw new Error("INVALID_CREDENTIALS");
-      }
-      issueSession(ctx.res, user.id);
-      return { user };
-    },
-
-    logout: (_: unknown, __: unknown, ctx: AuthContext) => {
-      clearSession(ctx.res);
-      return true;
-    },
-
     createPart: async (
       _: unknown,
       args: { name: string; sku: string; price: number; quantity: number },
@@ -70,7 +48,11 @@ export const resolvers = {
       requireAuth(ctx.userId);
       const part = await prisma.part.findUnique({ where: { id: args.id } });
       if (!part) throw new Error("NOT_FOUND: part does not exist");
-      if (part.ownerId !== ctx.userId) throw new Error("FORBIDDEN: not your part");
+
+      const me = await prisma.profile.findUnique({ where: { id: ctx.userId } });
+      if (part.ownerId !== ctx.userId && me?.role !== "admin") {
+        throw new Error("FORBIDDEN: not your part");
+      }
 
       return prisma.part.update({
         where: { id: args.id },
@@ -86,7 +68,11 @@ export const resolvers = {
       requireAuth(ctx.userId);
       const part = await prisma.part.findUnique({ where: { id } });
       if (!part) throw new Error("NOT_FOUND: part does not exist");
-      if (part.ownerId !== ctx.userId) throw new Error("FORBIDDEN: not your part");
+
+      const me = await prisma.profile.findUnique({ where: { id: ctx.userId } });
+      if (part.ownerId !== ctx.userId && me?.role !== "admin") {
+        throw new Error("FORBIDDEN: not your part");
+      }
 
       await prisma.part.delete({ where: { id } });
       return true;
