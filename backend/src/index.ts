@@ -6,6 +6,7 @@ import { Request } from "express";
 import { typeDefs } from "./schema";
 import { resolvers } from "./resolvers";
 import { getUserIdFromRequest, AuthContext } from "./middleware/auth";
+import { prisma } from "./prisma";
 
 async function main() {
   const app = express();
@@ -24,6 +25,31 @@ async function main() {
   );
   app.use(express.json());
 
+  // Lightweight liveness/readiness check. Touches the DB so a monitor pinging
+  // this also keeps Supabase's pooled connection warm and prevents the free-tier
+  // project from auto-pausing due to inactivity. GET and HEAD only — no body
+  // needed for HEAD, UptimeRobot and most uptime monitors default to one or
+  // the other depending on config.
+  app.get("/health", async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.status(200).json({ status: "ok", db: "up", time: new Date().toISOString() });
+    } catch (err) {
+      console.error("Health check DB query failed:", err);
+      res.status(503).json({ status: "error", db: "down" });
+    }
+  });
+
+  app.head("/health", async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.status(200).end();
+    } catch (err) {
+      console.error("Health check DB query failed:", err);
+      res.status(503).end();
+    }
+  });
+
   const server = new ApolloServer({
     typeDefs,
     resolvers,
@@ -41,8 +67,6 @@ async function main() {
       }),
     })
   );
-
-  app.get("/health", (_req, res) => res.json({ ok: true }));
 
   const PORT = 4000;
   app.listen(PORT, () => {
